@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from model import FishFreshnessModel
+from src.model import FishFreshnessModel
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -15,11 +15,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Set the correct paths for the models
 detection_model_path = 'gs://lautify.appspot.com/models/BestModel.pt'
 classification_model_path = 'gs://lautify.appspot.com/models/FreshnessModel.h5'
 
-# Instantiate the combined model
 combined_model = FishFreshnessModel(detection_model_path, classification_model_path)
 
 @app.get('/')

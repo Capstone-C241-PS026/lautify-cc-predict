@@ -10,13 +10,8 @@ import string
 
 class FishFreshnessModel:
     def __init__(self, detection_model_path, classification_model_path):
-        # Initialize Google Cloud Storage client
         self.storage_client = storage.Client()
-
-        # Load the YOLOv5 model for eye detection from GCS
         self.detection_model = self.load_torch_model_from_gcs(detection_model_path)
-
-        # Load the pre-trained classification model from GCS
         self.classification_model = self.load_keras_model_from_gcs(classification_model_path)
 
     def load_torch_model_from_gcs(self, gcs_path):
@@ -49,13 +44,8 @@ class FishFreshnessModel:
         bucket = self.storage_client.bucket(bucket_name)
         destination_blob_name= f'images-predict/{destination_blob_name}'
         blob = bucket.blob(destination_blob_name)
-        
-        print(destination_blob_name)
-        
-        # Upload dengan menentukan kondisi if_generation_match agar mengganti blob yang ada
         blob.upload_from_filename(source_file_name, if_generation_match=blob.generation)
-
-        print(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}.")
+        # print(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}.")
 
     def preprocess_image(self, image):
         img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -103,8 +93,7 @@ class FishFreshnessModel:
         img_path = os.path.join(save_dir, img_name)
         cv2.imwrite(img_path, img)
 
-        # Upload annotated image to GCS
-        print(f"Uploading annotated image to gs://{output_bucket}/{img_name}")
+        # print(f"Uploading annotated image to gs://{output_bucket}/{img_name}")
         self.upload_blob(output_bucket, img_path, img_name)
 
         # Generate random string for cache-busting
