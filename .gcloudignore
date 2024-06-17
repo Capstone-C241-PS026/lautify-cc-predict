@@ -1,0 +1,7 @@
+__pycache__
+my_venv
+model
+.DS_Store
+.git
+.gitignore
+.gcloudignore
