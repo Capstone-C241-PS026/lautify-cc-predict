@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from src.model import FishFreshnessModel
+from model import FishFreshnessModel
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
