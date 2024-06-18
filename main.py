@@ -1,11 +1,11 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from model import FishFreshnessModel
-
+import uvicorn
 import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
 
 app = FastAPI()
+ssl._create_default_https_context = ssl._create_unverified_context
 
 app.add_middleware(
     CORSMiddleware,
@@ -15,16 +15,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-detection_model_path = 'gs://lautify.appspot.com/models/BestModel.pt'
-classification_model_path = 'gs://lautify.appspot.com/models/FreshnessModel.h5'
+detection_model_path = 'temp/best.pt'
+classification_model_path = 'temp/FreshnessModel.h5'
 
 combined_model = FishFreshnessModel(detection_model_path, classification_model_path)
 
 @app.get('/')
 async def index():
-    return {"API Ready"}
+    return {"status": "success","message": "API Ready"}
 
-@app.post('/predict/')
+@app.post('/predict')
 async def predict(predict:UploadFile = File(...)):
     try: 
         img_predict = await predict.read()
@@ -33,5 +33,8 @@ async def predict(predict:UploadFile = File(...)):
             
     except Exception as e:
         return {"status": "error","message": e.args}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8080)
     
    

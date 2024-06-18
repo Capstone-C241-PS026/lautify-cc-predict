@@ -11,41 +11,23 @@ import string
 class FishFreshnessModel:
     def __init__(self, detection_model_path, classification_model_path):
         self.storage_client = storage.Client()
-        self.detection_model = self.load_torch_model_from_gcs(detection_model_path)
-        self.classification_model = self.load_keras_model_from_gcs(classification_model_path)
+        self.detection_model = self.load_torch_model(detection_model_path)
+        self.classification_model = self.load_keras_model(classification_model_path)
 
-    def load_torch_model_from_gcs(self, gcs_path):
-        bucket_name, blob_name = self.parse_gcs_path(gcs_path)
-        local_path = "/tmp/best.pt"
-        self.download_blob(bucket_name, blob_name, local_path)
-        model = torch.hub.load('ultralytics/yolov5', 'custom', path=local_path)
+    def load_torch_model(self, local_path):
+        model = torch.hub.load('yolov5', 'custom', path=local_path, source='local')
         return model
 
-    def load_keras_model_from_gcs(self, gcs_path):
-        bucket_name, blob_name = self.parse_gcs_path(gcs_path)
-        local_path = "/tmp/FreshnessModel.h5"
-        self.download_blob(bucket_name, blob_name, local_path)
+    def load_keras_model(self, local_path):
         model = load_model(local_path)
         return model
-
-    def parse_gcs_path(self, gcs_path):
-        assert gcs_path.startswith("gs://")
-        gcs_path = gcs_path[5:]
-        bucket_name, blob_name = gcs_path.split("/", 1)
-        return bucket_name, blob_name
-
-    def download_blob(self, bucket_name, blob_name, destination_file_name):
-        bucket = self.storage_client.bucket(bucket_name)
-        blob = bucket.blob(blob_name)
-        blob.download_to_filename(destination_file_name)
-        print(f"Downloaded {blob_name} to {destination_file_name}.")
 
     def upload_blob(self, bucket_name, source_file_name, destination_blob_name):
         bucket = self.storage_client.bucket(bucket_name)
         destination_blob_name= f'images-predict/{destination_blob_name}'
         blob = bucket.blob(destination_blob_name)
         blob.upload_from_filename(source_file_name, if_generation_match=blob.generation)
-        # print(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}.")
+        print(f"Uploaded {source_file_name} to gs://{bucket_name}/{destination_blob_name}.")
 
     def preprocess_image(self, image):
         img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -55,6 +37,7 @@ class FishFreshnessModel:
         return img
 
     async def detect_eye_and_classify_freshness(self, image_bytes, output_bucket):
+        self.classification_model.save('save_model/FreshnessModel.h5')
         np_array = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
 
@@ -93,7 +76,7 @@ class FishFreshnessModel:
         img_path = os.path.join(save_dir, img_name)
         cv2.imwrite(img_path, img)
 
-        # print(f"Uploading annotated image to gs://{output_bucket}/{img_name}")
+        print(f"Uploading annotated image to gs://{output_bucket}/{img_name}")
         self.upload_blob(output_bucket, img_path, img_name)
 
         # Generate random string for cache-busting
