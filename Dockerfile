@@ -16,8 +16,7 @@ RUN pip install --no-cache-dir h5py --only-binary h5py
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN mkdir -p /app/temp && \
-    curl -o /app/temp/best.pt https://storage.googleapis.com/lautify.appspot.com/models/BestModel.pt && \
-    curl -o /app/temp/FreshnessModel.h5 https://storage.googleapis.com/lautify.appspot.com/models/FreshnessModel.h5
+    curl -o /app/temp/best.pt https://storage.googleapis.com/lautify.appspot.com/models/BestModel.pt
 
 COPY . .
 

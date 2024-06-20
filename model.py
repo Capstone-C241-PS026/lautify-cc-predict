@@ -9,9 +9,10 @@ import random
 import string
 
 class FishFreshnessModel:
-    def __init__(self, detection_model_path, classification_model_path):
+    def __init__(self, detection_model_path, freshness_model_path, classification_model_path):
         self.storage_client = storage.Client()
         self.detection_model = self.load_torch_model(detection_model_path)
+        self.freshness_model = self.load_keras_model(freshness_model_path)
         self.classification_model = self.load_keras_model(classification_model_path)
 
     def load_torch_model(self, local_path):
@@ -37,7 +38,6 @@ class FishFreshnessModel:
         return img
 
     async def detect_eye_and_classify_freshness(self, image_bytes, output_bucket):
-        self.classification_model.save('save_model/FreshnessModel.h5')
         np_array = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
 
@@ -52,7 +52,7 @@ class FishFreshnessModel:
             cropped_eye = img[int(ymin):int(ymax), int(xmin):int(xmax)]
             processed_eye = self.preprocess_image(cropped_eye)
 
-            prediction = self.classification_model.predict(processed_eye)
+            prediction = self.freshness_model.predict(processed_eye)
             predicted_class = np.argmax(prediction, axis=1)
             confidence = prediction[0][predicted_class[0]]
 
@@ -71,19 +71,25 @@ class FishFreshnessModel:
             cv2.rectangle(img, (int(xmin), int(ymin)), (int(xmax), int(ymax)), color, 2)
             cv2.putText(img, f"{freshness}", (int(xmin), int(ymin)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
-        save_dir = "/tmp"
-        img_name = f"annotated_image_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-        img_path = os.path.join(save_dir, img_name)
+        classify_img =self.preprocess_image(img)
+        fish_prediction = self.classification_model.predict(classify_img)
+        fish_class = np.argmax(fish_prediction, axis=1)
+
+        fish_labels= ['Bawal Putih', 'Belato', 'Cakalang', 'Gembolo', 'Gole Gole', 'Kakap Merah', 'Kembung', 'Kerapu', 'Tenggiri', 'Tongkol']
+        fish_kind = fish_labels[fish_class[0]]
+
+        img_name = f"{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.jpg"
+        img_path = os.path.join('temp', img_name)
         cv2.imwrite(img_path, img)
 
         print(f"Uploading annotated image to gs://{output_bucket}/{img_name}")
         self.upload_blob(output_bucket, img_path, img_name)
 
-        # Generate random string for cache-busting
         random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
 
         result = {
             "image": f"https://storage.googleapis.com/lautify.appspot.com/images-predict/{img_name}?random={random_string}",
-            "predictions": predictions
+            "predictions": predictions,
+            "fish_kind": fish_kind
         }
         return result
